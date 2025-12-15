@@ -1,32 +1,48 @@
 (() => {
-  // 1) Сохраняем ссылку на <script> СРАЗУ (пока currentScript ещё не null)
-  const scriptEl =
-    document.currentScript ||
-    Array.from(document.getElementsByTagName("script")).find((s) =>
-      (s.getAttribute("src") || "").includes("pb-chat-widget.js")
-    );
-
-  const waitForBody = (cb, tries = 300) => {
-    if (document.body) return cb();
-    if (tries <= 0) {
-      console.error("[pb-chat-widget] document.body is still null");
-      return;
+  // --- robust config (Tilda-safe) ---
+  const getConfig = () => {
+    // 1) Prefer global config (works everywhere, incl. Tilda)
+    const g = window.PB_CHAT_WIDGET_CONFIG;
+    if (g && (g.webhookUrl || g.webhookURL)) {
+      return {
+        webhookUrl: g.webhookUrl || g.webhookURL,
+        title: g.title || "AI помощник",
+        position: g.position || "bottom-right",
+        primary: g.primary || "#1677ff",
+        zIndex: Number(g.zIndex || 99999),
+      };
     }
-    requestAnimationFrame(() => waitForBody(cb, tries - 1));
-  };
 
-  const mount = () => {
-    const cfg = {
+    // 2) Fallback: try data-* on the script tag (non-Tilda friendly sometimes)
+    const scripts = Array.from(document.getElementsByTagName("script"));
+    const scriptEl =
+      document.currentScript ||
+      scripts.find((s) => (s.getAttribute("src") || "").includes("pb-chat-widget.js")) ||
+      scripts.find((s) => s.dataset && s.dataset.webhookUrl);
+
+    return {
       webhookUrl: scriptEl?.dataset?.webhookUrl || "",
       title: scriptEl?.dataset?.title || "AI помощник",
       position: scriptEl?.dataset?.position || "bottom-right",
       primary: scriptEl?.dataset?.primary || "#1677ff",
       zIndex: Number(scriptEl?.dataset?.zIndex || 99999),
     };
+  };
+
+  // Wait until body exists (Tilda can run scripts super-early)
+  const waitForBody = (cb, tries = 600) => {
+    if (document.body) return cb();
+    if (tries <= 0) return console.error("[pb-chat-widget] document.body is still null");
+    requestAnimationFrame(() => waitForBody(cb, tries - 1));
+  };
+
+  const mount = () => {
+    const cfg = getConfig();
 
     if (!cfg.webhookUrl) {
       console.error(
-        "[pb-chat-widget] Missing data-webhook-url. Add it to the script tag, e.g. data-webhook-url='https://...'"
+        "[pb-chat-widget] Missing webhookUrl. Use:\n" +
+        "window.PB_CHAT_WIDGET_CONFIG = { webhookUrl: 'https://...' } BEFORE loading pb-chat-widget.js"
       );
       return;
     }
