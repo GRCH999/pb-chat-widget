@@ -91,6 +91,25 @@
 .pbw-send { width:42px; height:42px; border-radius:999px; border:none; background:${cfg.primary}; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .pbw-send svg { width:20px; height:20px; fill:#fff; }
 .pbw-typing { font-size:12px; color:rgba(0,0,0,.55); margin:6px 0 0 2px; }
+.pbw-window,
+.pbw-window * {
+  pointer-events: auto !important;
+}
+
+.pbw-window {
+  z-index: 2147483647 !important;
+}
+
+.pbw-bubble {
+  z-index: 2147483647 !important;
+}
+
+.pbw-input {
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  touch-action: manipulation !important;
+}
 `;
     document.head.appendChild(style);
 
