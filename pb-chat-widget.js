@@ -1,3 +1,4 @@
+// v1.02 test
 (() => {
   // --- robust config (Tilda-safe) ---
   const getConfig = () => {
