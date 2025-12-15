@@ -1,5 +1,8 @@
 import { defineConfig } from "vite";
-import pkg from "./package.json" assert { type: "json" };
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
 
 export default defineConfig({
   build: {
@@ -7,14 +10,14 @@ export default defineConfig({
       entry: "src/widget.ts",
       name: "PBChatWidget",
       formats: ["iife"],
-      fileName: () => `pb-chat-widget@${pkg.version}.min.js`
+      fileName: () => `pb-chat-widget@${pkg.version}.min.js`,
     },
     minify: "terser",
     cssCodeSplit: false,
     rollupOptions: {
       output: {
-        inlineDynamicImports: true
-      }
-    }
-  }
+        inlineDynamicImports: true,
+      },
+    },
+  },
 });
