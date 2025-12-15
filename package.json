@@ -1,0 +1,14 @@
+{
+  "name": "pb-chat-widget",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "terser": "^5.31.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.0"
+  }
+}
