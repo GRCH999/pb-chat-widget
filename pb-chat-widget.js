@@ -1,5 +1,11 @@
 (() => {
-  // Ждём, пока появится <body>. Тильда иногда исполняет скрипты очень рано.
+  // 1) Сохраняем ссылку на <script> СРАЗУ (пока currentScript ещё не null)
+  const scriptEl =
+    document.currentScript ||
+    Array.from(document.getElementsByTagName("script")).find((s) =>
+      (s.getAttribute("src") || "").includes("pb-chat-widget.js")
+    );
+
   const waitForBody = (cb, tries = 300) => {
     if (document.body) return cb();
     if (tries <= 0) {
@@ -10,17 +16,18 @@
   };
 
   const mount = () => {
-    const currentScript = document.currentScript;
     const cfg = {
-      webhookUrl: currentScript?.dataset?.webhookUrl || "",
-      title: currentScript?.dataset?.title || "AI помощник",
-      position: currentScript?.dataset?.position || "bottom-right",
-      primary: currentScript?.dataset?.primary || "#1677ff",
-      zIndex: Number(currentScript?.dataset?.zIndex || 99999),
+      webhookUrl: scriptEl?.dataset?.webhookUrl || "",
+      title: scriptEl?.dataset?.title || "AI помощник",
+      position: scriptEl?.dataset?.position || "bottom-right",
+      primary: scriptEl?.dataset?.primary || "#1677ff",
+      zIndex: Number(scriptEl?.dataset?.zIndex || 99999),
     };
 
     if (!cfg.webhookUrl) {
-      console.error("[pb-chat-widget] Missing data-webhook-url");
+      console.error(
+        "[pb-chat-widget] Missing data-webhook-url. Add it to the script tag, e.g. data-webhook-url='https://...'"
+      );
       return;
     }
 
@@ -90,8 +97,6 @@
   </div>
 </div>
 `;
-
-    // ВАЖНО: на этом месте body гарантированно есть благодаря waitForBody()
     document.body.appendChild(root);
 
     const bubble = root.querySelector(".pbw-bubble");
@@ -121,9 +126,6 @@
       if (!on && el) el.remove();
     };
 
-    bubble.onclick = () => win.classList.toggle("pbw-open");
-    closeBtn.onclick = () => win.classList.remove("pbw-open");
-
     const pickAnswer = (d) => {
       if (!d) return "";
       if (typeof d === "string") return d;
@@ -137,6 +139,9 @@
         ""
       );
     };
+
+    bubble.onclick = () => win.classList.toggle("pbw-open");
+    closeBtn.onclick = () => win.classList.remove("pbw-open");
 
     const send = async () => {
       const text = inputEl.value.trim();
@@ -169,6 +174,5 @@
     addMsg("bot", "Привет! Чем помочь?");
   };
 
-  // Запуск: сначала дождёмся body (самый надёжный способ)
   waitForBody(mount);
 })();
