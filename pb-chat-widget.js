@@ -1,4 +1,14 @@
 (() => {
+  // Ждём, пока появится <body>. Тильда иногда исполняет скрипты очень рано.
+  const waitForBody = (cb, tries = 300) => {
+    if (document.body) return cb();
+    if (tries <= 0) {
+      console.error("[pb-chat-widget] document.body is still null");
+      return;
+    }
+    requestAnimationFrame(() => waitForBody(cb, tries - 1));
+  };
+
   const mount = () => {
     const currentScript = document.currentScript;
     const cfg = {
@@ -39,77 +49,29 @@
     const style = document.createElement("style");
     style.textContent = `
 .pbw-reset, .pbw-reset * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-.pbw-bubble {
-  position: fixed;
-  ${isBR ? "right:16px" : "left:16px"};
-  bottom:16px;
-  width:56px;height:56px;border-radius:999px;
-  background:${cfg.primary};
-  box-shadow:0 12px 30px rgba(0,0,0,.18);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;z-index:${cfg.zIndex};
-}
+.pbw-bubble { position: fixed; ${isBR ? "right:16px" : "left:16px"}; bottom:16px; width:56px;height:56px;border-radius:999px; background:${cfg.primary}; box-shadow:0 12px 30px rgba(0,0,0,.18); display:flex;align-items:center;justify-content:center; cursor:pointer; z-index:${cfg.zIndex}; }
 .pbw-bubble svg { width:26px;height:26px;fill:#fff; }
-.pbw-window {
-  position: fixed;
-  ${isBR ? "right:16px" : "left:16px"};
-  bottom:86px;
-  width:360px;max-width:calc(100vw - 32px);
-  height:520px;max-height:calc(100vh - 120px);
-  background:#fff;border-radius:16px;
-  box-shadow:0 18px 50px rgba(0,0,0,.22);
-  overflow:hidden;display:none;
-  z-index:${cfg.zIndex};
-}
-.pbw-window.pbw-open { display:flex;flex-direction:column; }
-.pbw-header {
-  height:56px;display:flex;align-items:center;justify-content:space-between;
-  padding:0 14px;background:${cfg.primary};color:#fff;
-}
-.pbw-title { font-size:14px;font-weight:700; }
-.pbw-close {
-  width:34px;height:34px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;background:rgba(255,255,255,.18);
-}
-.pbw-body {
-  flex:1;padding:14px;background:#f6f7fb;overflow-y:auto;
-}
-.pbw-msg { display:flex;margin:10px 0; }
+.pbw-window { position: fixed; ${isBR ? "right:16px" : "left:16px"}; bottom:86px; width:360px; max-width:calc(100vw - 32px); height:520px; max-height:calc(100vh - 120px); background:#fff; border-radius:16px; box-shadow:0 18px 50px rgba(0,0,0,.22); overflow:hidden; display:none; z-index:${cfg.zIndex}; }
+.pbw-window.pbw-open { display:flex; flex-direction:column; }
+.pbw-header { height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 14px; background:${cfg.primary}; color:#fff; }
+.pbw-title { font-size:14px; font-weight:700; }
+.pbw-close { width:34px;height:34px;border-radius:10px; display:flex;align-items:center;justify-content:center; cursor:pointer; background:rgba(255,255,255,.18); }
+.pbw-body { flex:1; padding:14px; background:#f6f7fb; overflow-y:auto; }
+.pbw-msg { display:flex; margin:10px 0; }
 .pbw-msg.pbw-user { justify-content:flex-end; }
-.pbw-bubblemsg {
-  max-width:78%;padding:10px 12px;border-radius:14px;
-  font-size:14px;line-height:1.35;white-space:pre-wrap;
-  box-shadow:0 8px 22px rgba(0,0,0,.08);
-}
-.pbw-user .pbw-bubblemsg {
-  background:${cfg.primary};color:#fff;border-bottom-right-radius:6px;
-}
-.pbw-bot .pbw-bubblemsg {
-  background:#fff;color:#111;border-bottom-left-radius:6px;
-}
-.pbw-footer {
-  padding:10px;background:#fff;border-top:1px solid rgba(0,0,0,.06);
-  display:flex;gap:10px;align-items:center;
-}
-.pbw-input {
-  flex:1;height:42px;border-radius:999px;
-  border:1px solid rgba(0,0,0,.14);
-  padding:0 14px;font-size:14px;outline:none;
-}
-.pbw-send {
-  width:42px;height:42px;border-radius:999px;border:none;
-  background:${cfg.primary};cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-}
-.pbw-send svg { width:20px;height:20px;fill:#fff; }
-.pbw-typing { font-size:12px;color:rgba(0,0,0,.55);margin:6px 0 0 2px; }
+.pbw-bubblemsg { max-width:78%; padding:10px 12px; border-radius:14px; font-size:14px; line-height:1.35; white-space:pre-wrap; box-shadow:0 8px 22px rgba(0,0,0,.08); }
+.pbw-user .pbw-bubblemsg { background:${cfg.primary}; color:#fff; border-bottom-right-radius:6px; }
+.pbw-bot .pbw-bubblemsg { background:#fff; color:#111; border-bottom-left-radius:6px; }
+.pbw-footer { padding:10px; background:#fff; border-top:1px solid rgba(0,0,0,.06); display:flex; gap:10px; align-items:center; }
+.pbw-input { flex:1; height:42px; border-radius:999px; border:1px solid rgba(0,0,0,.14); padding:0 14px; font-size:14px; outline:none; }
+.pbw-send { width:42px; height:42px; border-radius:999px; border:none; background:${cfg.primary}; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.pbw-send svg { width:20px; height:20px; fill:#fff; }
+.pbw-typing { font-size:12px; color:rgba(0,0,0,.55); margin:6px 0 0 2px; }
 `;
     document.head.appendChild(style);
 
     const root = document.createElement("div");
     root.className = "pbw-reset";
-
     root.innerHTML = `
 <div class="pbw-bubble">
   <svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v15.5A1.5 1.5 0 0 0 3.5 21H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm-2 10H6v-2h12v2Zm0-4H6V6h12v2Zm-6 8H6v-2h6v2Z"/></svg>
@@ -122,12 +84,14 @@
   <div class="pbw-body"></div>
   <div class="pbw-footer">
     <input class="pbw-input" placeholder="Напишите сообщение…" />
-    <button class="pbw-send">
+    <button class="pbw-send" type="button" aria-label="Send">
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
     </button>
   </div>
 </div>
 `;
+
+    // ВАЖНО: на этом месте body гарантированно есть благодаря waitForBody()
     document.body.appendChild(root);
 
     const bubble = root.querySelector(".pbw-bubble");
@@ -152,12 +116,27 @@
         el.className = "pbw-typing";
         el.textContent = "Печатает…";
         bodyEl.appendChild(el);
+        bodyEl.scrollTop = bodyEl.scrollHeight;
       }
       if (!on && el) el.remove();
     };
 
     bubble.onclick = () => win.classList.toggle("pbw-open");
     closeBtn.onclick = () => win.classList.remove("pbw-open");
+
+    const pickAnswer = (d) => {
+      if (!d) return "";
+      if (typeof d === "string") return d;
+      if (Array.isArray(d)) return pickAnswer(d[0]);
+      return (
+        d.output ||
+        d.text ||
+        d.response ||
+        d.answer ||
+        (d.data && (d.data.output || d.data.text)) ||
+        ""
+      );
+    };
 
     const send = async () => {
       const text = inputEl.value.trim();
@@ -171,20 +150,11 @@
         const res = await fetch(cfg.webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatInput: text,
-            sessionId: getSessionId(),
-          }),
+          body: JSON.stringify({ chatInput: text, sessionId: getSessionId() }),
         });
 
         const data = await res.json().catch(() => ({}));
-        const answer =
-          data?.output ||
-          data?.text ||
-          data?.response ||
-          (Array.isArray(data) && data[0]?.output) ||
-          "Ок";
-
+        const answer = pickAnswer(data) || "Ок";
         setTyping(false);
         addMsg("bot", answer);
       } catch (e) {
@@ -199,9 +169,6 @@
     addMsg("bot", "Привет! Чем помочь?");
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mount);
-  } else {
-    mount();
-  }
+  // Запуск: сначала дождёмся body (самый надёжный способ)
+  waitForBody(mount);
 })();
