@@ -5,9 +5,12 @@ type PBConfig = {
   primary?: string;
   zIndex?: number;
   greeting?: string;
+
+  autoOpenAfter?: number; // ms
+  autoOpenOnce?: boolean; // default true
 };
 
-/* ---------------- helpers ---------------- */
+/* ================= helpers ================= */
 
 const waitForBody = (cb: () => void, tries = 600) => {
   if (document.body) return cb();
@@ -26,17 +29,54 @@ const escapeHtml = (s: string) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
-const storageKey = "pb_chat_session_id";
+/* ================= session ================= */
+
+const SESSION_KEY = "pb_chat_session_id";
+const AUTO_OPEN_KEY = "pb_chat_auto_opened";
+
 const getSessionId = () => {
-  let id = localStorage.getItem(storageKey);
+  let id = localStorage.getItem(SESSION_KEY);
   if (!id) {
     id =
       (crypto?.randomUUID && crypto.randomUUID()) ||
       `sid_${Math.random().toString(16).slice(2)}_${Date.now()}`;
-    localStorage.setItem(storageKey, id);
+    localStorage.setItem(SESSION_KEY, id);
   }
   return id;
 };
+
+/* ================= history ================= */
+
+type ChatMessage = {
+  role: "user" | "bot";
+  text: string;
+};
+
+const MAX_HISTORY = 50;
+
+const getHistoryKey = () => `pb_chat_history_${getSessionId()}`;
+
+const loadHistory = (): ChatMessage[] => {
+  try {
+    const raw = localStorage.getItem(getHistoryKey());
+    return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveHistory = (history: ChatMessage[]) => {
+  try {
+    localStorage.setItem(
+      getHistoryKey(),
+      JSON.stringify(history.slice(-MAX_HISTORY))
+    );
+  } catch {
+    // ignore quota errors
+  }
+};
+
+/* ================= utils ================= */
 
 const pickAnswer = (d: any): string => {
   if (!d) return "";
@@ -52,7 +92,7 @@ const pickAnswer = (d: any): string => {
   );
 };
 
-/* ---- scroll lock (fix double scroll) ---- */
+/* ============ scroll lock (fix double scroll) ============ */
 
 const lockBodyScroll = () => {
   document.documentElement.style.overflow = "hidden";
@@ -64,7 +104,7 @@ const unlockBodyScroll = () => {
   document.body.style.overflow = "";
 };
 
-/* ---------------- mount ---------------- */
+/* ================= mount ================= */
 
 const mount = () => {
   const cfg = window.PB_CHAT_WIDGET_CONFIG as PBConfig | undefined;
@@ -82,7 +122,10 @@ const mount = () => {
   const zIndex = Number(cfg.zIndex ?? 2147483647);
   const greeting = cfg.greeting ?? "Привет! Чем помочь?";
 
-  /* ---- host ---- */
+  const autoOpenAfter = cfg.autoOpenAfter;
+  const autoOpenOnce = cfg.autoOpenOnce !== false;
+
+  /* ---------- host ---------- */
 
   const host = document.createElement("div");
   host.id = "pb-chat-widget-host";
@@ -96,7 +139,7 @@ const mount = () => {
 
   const shadow = host.attachShadow({ mode: "open" });
 
-  /* ---- styles (isolated) ---- */
+  /* ---------- styles ---------- */
 
   const style = document.createElement("style");
   style.textContent = `
@@ -166,7 +209,7 @@ button svg { width:20px;height:20px;fill:#fff; }
 `;
   shadow.appendChild(style);
 
-  /* ---- markup ---- */
+  /* ---------- markup ---------- */
 
   const wrap = document.createElement("div");
   wrap.innerHTML = `
@@ -190,7 +233,7 @@ button svg { width:20px;height:20px;fill:#fff; }
 `;
   shadow.appendChild(wrap);
 
-  /* ---- logic ---- */
+  /* ---------- logic ---------- */
 
   const bubble = shadow.querySelector(".bubble") as HTMLDivElement;
   const win = shadow.querySelector(".win") as HTMLDivElement;
@@ -198,6 +241,8 @@ button svg { width:20px;height:20px;fill:#fff; }
   const bodyEl = shadow.querySelector(".body") as HTMLDivElement;
   const inputEl = shadow.querySelector(".inp") as HTMLInputElement;
   const sendBtn = shadow.querySelector(".send") as HTMLButtonElement;
+
+  let history: ChatMessage[] = loadHistory();
 
   const scrollDown = () => (bodyEl.scrollTop = bodyEl.scrollHeight);
 
@@ -207,6 +252,9 @@ button svg { width:20px;height:20px;fill:#fff; }
     row.innerHTML = `<div class="msg">${escapeHtml(text)}</div>`;
     bodyEl.appendChild(row);
     scrollDown();
+
+    history.push({ role, text });
+    saveHistory(history);
   };
 
   const setTyping = (on: boolean) => {
@@ -225,6 +273,9 @@ button svg { width:20px;height:20px;fill:#fff; }
   const open = () => {
     win.classList.add("open");
     lockBodyScroll();
+    try {
+      localStorage.setItem(AUTO_OPEN_KEY, "1");
+    } catch {}
     setTimeout(() => inputEl.focus(), 0);
   };
 
@@ -277,7 +328,30 @@ button svg { width:20px;height:20px;fill:#fff; }
     if (e.key === "Enter") send();
   });
 
-  addMsg("bot", greeting);
+  /* ---------- restore history ---------- */
+
+  if (history.length) {
+    history.forEach((m) => addMsg(m.role, m.text));
+  } else {
+    addMsg("bot", greeting);
+  }
+
+  /* ---------- auto-open ---------- */
+
+  if (typeof autoOpenAfter === "number" && autoOpenAfter > 0) {
+    let alreadyOpened = false;
+    try {
+      alreadyOpened = localStorage.getItem(AUTO_OPEN_KEY) === "1";
+    } catch {}
+
+    if (!alreadyOpened || !autoOpenOnce) {
+      setTimeout(() => {
+        if (!win.classList.contains("open")) {
+          open();
+        }
+      }, autoOpenAfter);
+    }
+  }
 };
 
 waitForBody(mount);
