@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import pkg from "./package.json" assert { type: "json" };
 
 export default defineConfig({
   build: {
@@ -6,7 +7,7 @@ export default defineConfig({
       entry: "src/widget.ts",
       name: "PBChatWidget",
       formats: ["iife"],
-      fileName: () => "pb-chat-widget.min.js",
+      fileName: () => `pb-chat-widget@${pkg.version}.min.js`
     },
     minify: "terser",
     cssCodeSplit: false,
